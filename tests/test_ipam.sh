@@ -29,20 +29,20 @@ expectedIPServer0="$expectedIPLabelServer0/16" # k3d excludes the subnet_start (
 expectedIPServerLB="172.80.0.4/16"
 
 info "Creating cluster $clustername..."
-$EXE cluster create $clustername --timeout 360s --subnet $subnet || failed "could not create cluster $clustername"
+k3d_test_cmd cluster create $clustername --timeout 360s --subnet $subnet || failed "could not create cluster $clustername"
 
 function check_cluster() {
   info "Checking we have access to the cluster..."
   check_clusters "$clustername" || failed "error checking cluster"
 
   info "Checking IP Subnet/IP values..."
-  if [[ $(docker network inspect k3d-$clustername | jq '.[0].IPAM.Config[0].Subnet') != "\"$subnet\"" ]]; then
-    failed "Subnet does not match expected value: $(docker network inspect k3d-$clustername | jq '.[0].IPAM.Config[0].Subnet') != \"$subnet\""
+  if [[ $($RUNTIME_CMD network inspect k3d-$clustername | jq '.[0].IPAM.Config[0].Subnet') != "\"$subnet\"" ]]; then
+    failed "Subnet does not match expected value: $($RUNTIME_CMD network inspect k3d-$clustername | jq '.[0].IPAM.Config[0].Subnet') != \"$subnet\""
   fi
-  if [[ $(docker network inspect k3d-$clustername | jq '.[0].IPAM.Config[0].Gateway') != "\"$expectedIPGateway\"" ]]; then
+  if [[ $($RUNTIME_CMD network inspect k3d-$clustername | jq '.[0].IPAM.Config[0].Gateway') != "\"$expectedIPGateway\"" ]]; then
     failed "Gateway IP does not match expected value"
   fi
-  if [[ $(docker network inspect k3d-$clustername | jq ".[0].Containers | .[] | select(.Name == \"k3d-$clustername-server-0\") | .IPv4Address") != "\"$expectedIPServer0\"" ]]; then
+  if [[ $($RUNTIME_CMD network inspect k3d-$clustername | jq ".[0].Containers | .[] | select(.Name == \"k3d-$clustername-server-0\") | .IPv4Address") != "\"$expectedIPServer0\"" ]]; then
     failed "Container k3d-$clustername-server-0's IP does not match expected value"
   fi
 
@@ -54,14 +54,14 @@ function check_cluster() {
 check_cluster
 
 info "Stopping & Starting cluster $clustername..."
-$EXE cluster stop $clustername || failed "error stopping cluster $clustername"
+k3d_test_cmd cluster stop $clustername || failed "error stopping cluster $clustername"
 sleep 3
-$EXE cluster start $clustername || failed "error starting cluster $clustername"
+k3d_test_cmd cluster start $clustername || failed "error starting cluster $clustername"
 
 check_cluster
 
 info "Deleting cluster $clustername..."
-$EXE cluster delete $clustername || failed "could not delete the cluster $clustername"
+k3d_test_cmd cluster delete $clustername || failed "could not delete the cluster $clustername"
 
 exit 0
 

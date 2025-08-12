@@ -16,7 +16,7 @@
 
 k3s is the lightweight Kubernetes distribution by Rancher: [k3s-io/k3s](https://github.com/k3s-io/k3s)
 
-k3d creates containerized k3s clusters. This means, that you can spin up a multi-node k3s cluster on a single machine using docker.
+k3d creates containerized k3s clusters. This means, that you can spin up a multi-node k3s cluster on a single machine using Docker or Podman.
 
 [![asciicast](https://asciinema.org/a/436420.svg)](https://asciinema.org/a/436420)
 
@@ -35,8 +35,11 @@ k3d creates containerized k3s clusters. This means, that you can spin up a multi
 
 ## Requirements
 
-- [docker](https://docs.docker.com/install/)
-  - Note: k3d v5.x.x requires at least Docker v20.10.5 (runc >= v1.0.0-rc93) to work properly (see [#807](https://github.com/k3d-io/k3d/issues/807))
+- A container runtime, either:
+  - [Docker](https://docs.docker.com/install/)
+    - Note: k3d v5.x.x requires at least Docker v20.10.5 (runc >= v1.0.0-rc93) to work properly (see [#807](https://github.com/k3d-io/k3d/issues/807)).
+  - [Podman](https://podman.io/getting-started/installation) (v4.0+ recommended)
+    - For more details on using Podman, see the [Podman documentation](https://k3d.io/v5/usage/advanced/podman/).
 
 ## Releases
 

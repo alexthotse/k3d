@@ -34,7 +34,7 @@ clustername="lifecycletest"
 highlight "[START] Lifecycletest $EXTRA_TITLE"
 
 info "Creating cluster $clustername..."
-$EXE cluster create "$clustername" --agents 1 --wait --timeout 360s $EXTRA_FLAG || failed "could not create cluster $clustername $EXTRA_TITLE"
+k3d_test_cmd cluster create "$clustername" --agents 1 --wait --timeout 360s $EXTRA_FLAG || failed "could not create cluster $clustername $EXTRA_TITLE"
 
 info "Sleeping for 5 seconds to give the cluster enough time to get ready..."
 sleep 10
@@ -48,14 +48,14 @@ check_multi_node "$clustername" 2 || failed "failed to verify number of nodes"
 
 # 2. stop the cluster
 info "Stopping cluster..."
-$EXE cluster stop "$clustername"
+k3d_test_cmd cluster stop "$clustername"
 
 info "Checking that cluster was stopped"
 check_clusters "$clustername" && failed "cluster was not stopped, since we still have access"
 
 # 3. start the cluster
 info "Starting cluster..."
-$EXE cluster start "$clustername" --wait --timeout 360s || failed "cluster didn't come back in time"
+k3d_test_cmd cluster start "$clustername" --wait --timeout 360s || failed "cluster didn't come back in time"
 
 info "Checking that we have access to the cluster..."
 check_clusters "$clustername" || failed "error checking cluster"
@@ -66,16 +66,16 @@ check_multi_node "$clustername" 2 || failed "failed to verify number of nodes"
 
 # 4. adding another agent node
 info "Adding one agent node..."
-$EXE node create "extra-agent" --cluster "$clustername" --role "agent" --wait --timeout 360s || failed "failed to add agent node"
+k3d_test_cmd node create "extra-agent" --cluster "$clustername" --role "agent" --wait --timeout 360s || failed "failed to add agent node"
 
 info "Checking that we have 3 nodes available now..."
 check_multi_node "$clustername" 3 || failed "failed to verify number of nodes"
 
 # 4. load an image into the cluster
 info "Importing an image into the cluster..."
-docker pull iwilltry42/dnsutils:20.04 > /dev/null
-docker tag iwilltry42/dnsutils:20.04 testimage:local > /dev/null
-$EXE image import testimage:local -c $clustername || failed "could not import image in $clustername"
+$RUNTIME_CMD pull iwilltry42/dnsutils:20.04 > /dev/null
+$RUNTIME_CMD tag iwilltry42/dnsutils:20.04 testimage:local > /dev/null
+k3d_test_cmd image import testimage:local -c $clustername || failed "could not import image in $clustername"
 
 # 5. use imported image
 info "Spawning a pod using the imported image..."
@@ -97,7 +97,7 @@ wait_for_pod_exec "testimage" "ping -c1 host.k3d.internal" 15 || failed "Pinging
 # Cleanup
 
 info "Deleting cluster $clustername..."
-$EXE cluster delete "$clustername" || failed "could not delete the cluster $clustername"
+k3d_test_cmd cluster delete "$clustername" || failed "could not delete the cluster $clustername"
 
 highlight "[DONE] Lifecycletest $EXTRA_TITLE"
 

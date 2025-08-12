@@ -39,7 +39,7 @@ fi
 clustername="multiserverstartstop"
 
 info "Creating cluster $clustername $EXTRA_TITLE ..."
-$EXE cluster create "$clustername" --servers 3 --wait --timeout 360s $EXTRA_FLAG || failed "could not create cluster $clustername $EXTRA_TITLE"
+k3d_test_cmd cluster create "$clustername" --servers 3 --wait --timeout 360s $EXTRA_FLAG || failed "could not create cluster $clustername $EXTRA_TITLE"
 info "Checking that we have access to the cluster..."
 check_clusters "$clustername" || failed "error checking cluster $EXTRA_TITLE"
 
@@ -50,13 +50,13 @@ info "Checking that we have 3 server nodes online..."
 check_multi_node "$clustername" 3 || failed "failed to verify number of nodes $EXTRA_TITLE"
 
 info "Stopping cluster..."
-$EXE cluster stop "$clustername" || failed "failed to stop cluster"
+k3d_test_cmd cluster stop "$clustername" || failed "failed to stop cluster"
 
 info "Waiting for a bit..."
 sleep 5
 
 info "Restarting cluster (time: $(date -u +"%Y-%m-%d %H:%M:%S %Z"))..."
-$EXE cluster start $clustername --timeout 360s || failed "failed to restart cluster (timeout 360s)"
+k3d_test_cmd cluster start $clustername --timeout 360s || failed "failed to restart cluster (timeout 360s)"
 
 info "Sleeping for 5 seconds to give the cluster enough time to get ready..."
 sleep 5
@@ -65,7 +65,7 @@ info "Checking that we have access to the cluster..."
 check_clusters "$clustername" || failed "failed to verify that we have access to the cluster"
 
 info "Deleting cluster $clustername..."
-$EXE cluster delete "$clustername" || failed "could not delete the cluster $clustername $EXTRA_TITLE"
+k3d_test_cmd cluster delete "$clustername" || failed "could not delete the cluster $clustername $EXTRA_TITLE"
 
 passed "GOOD: $clustername cluster test successful $EXTRA_TITLE"
 

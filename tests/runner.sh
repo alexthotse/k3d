@@ -22,8 +22,8 @@ source "$CURR_DIR/common.sh"
 
 [ -n "$EXE" ] || abort "no EXE provided"
 
-info "Checking test environment..."
-$EXE runtime-info
+info "Checking test environment (Using runtime: $K3D_RUNTIME_UNDER_TEST)..."
+k3d_test_cmd runtime-info # This will use the k3d_test_cmd wrapper from common.sh
 
 info "Preparing filesystem and environment..."
 

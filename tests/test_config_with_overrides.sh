@@ -32,7 +32,7 @@ clustername="cfgoverridetest"
 highlight "[START] Config With Override $EXTRA_TITLE"
 
 info "Creating cluster $clustername..."
-$EXE cluster create "$clustername" --registry-create "newreg.localhost" --config "$CURR_DIR/assets/config_test_simple.yaml" --servers 1 -v /tmp/test:/tmp/test@loadbalancer --env "x=y@agent:1" $EXTRA_FLAG  || failed "could not create cluster $clustername $EXTRA_TITLE"
+k3d_test_cmd cluster create "$clustername" --registry-create "newreg.localhost" --config "$CURR_DIR/assets/config_test_simple.yaml" --servers 1 -v /tmp/test:/tmp/test@loadbalancer --env "x=y@agent:1" $EXTRA_FLAG  || failed "could not create cluster $clustername $EXTRA_TITLE"
 
 info "Sleeping for 5 seconds to give the cluster enough time to get ready..."
 sleep 5
@@ -61,7 +61,7 @@ k3s_assert_node_label "k3d-$clustername-server-0" "foo=bar" || failed "Expected 
 
 ## Registry Node
 info "Ensuring, that we DO NOT have a registry node present"
-$EXE node list "k3d-$clustername-registry" && failed "Expected k3d-$clustername-registry to NOT be present"
+k3d_test_cmd node list "k3d-$clustername-registry" && failed "Expected k3d-$clustername-registry to NOT be present"
 
 
 ## merged registries.yaml
@@ -72,7 +72,7 @@ exec_in_node "k3d-$clustername-server-0" "cat /etc/rancher/k3s/registries.yaml" 
 # Cleanup
 
 info "Deleting cluster $clustername..."
-$EXE cluster delete "$clustername" || failed "could not delete the cluster $clustername"
+k3d_test_cmd cluster delete "$clustername" || failed "could not delete the cluster $clustername"
 
 highlight "[DONE] ConfigTest $EXTRA_TITLE"
 
