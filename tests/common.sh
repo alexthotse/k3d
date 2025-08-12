@@ -13,7 +13,17 @@ BLOCK='\033[1;37m'
 PATH=/usr/local/bin:$PATH
 export PATH
 
-log() { >&2 printf "$(date -u +"%Y-%m-%d %H:%M:%S %Z") [${CURRENT_STAGE:-undefined}] ${BLOCK}>>>${END} $1\n"; }
+# Determine the runtime command (docker or podman)
+# K3D_RUNTIME_UNDER_TEST should be set by the CI or test environment. Defaults to docker.
+: "${K3D_RUNTIME_UNDER_TEST:="docker"}"
+RUNTIME_CMD="$K3D_RUNTIME_UNDER_TEST" # This can be docker or podman
+
+# Wrapper for k3d commands to inject --runtime flag
+k3d_test_cmd() {
+  "$EXE" --runtime "$K3D_RUNTIME_UNDER_TEST" "$@"
+}
+
+log() { >&2 printf "$(date -u +"%Y-%m-%d %H:%M:%S %Z") [${K3D_RUNTIME_UNDER_TEST}][${CURRENT_STAGE:-undefined}] ${BLOCK}>>>${END} $1\n"; }
 
 info() { log "${BLU}$1${END}"; }
 highlight() { log "${MGT}$1${END}"; }
@@ -76,17 +86,17 @@ check_url() {
 check_clusters() {
   [ -n "$EXE" ] || abort "EXE is not defined"
   for c in "$@" ; do
-    if $EXE kubeconfig merge "$c" --kubeconfig-switch-context; then
+    if k3d_test_cmd kubeconfig merge "$c" --kubeconfig-switch-context; then
       if kubectl cluster-info ; then
         passed "cluster $c is reachable"
       else
         warn "could not obtain cluster info for $c. Kubeconfig:\n$(kubectl config view)"
-        docker ps -a
+        $RUNTIME_CMD ps -a
         return 1
       fi
     else
       warn "could not merge kubeconfig for $c."
-      docker ps -a
+      $RUNTIME_CMD ps -a
       return 1
     fi
   done
@@ -96,7 +106,7 @@ check_clusters() {
 check_cluster_count() {
   expectedClusterCount=$1
   shift # all remaining args are clusternames
-  actualClusterCount=$(LOG_LEVEL=warn $EXE cluster list --no-headers "$@" | wc -l) # this must always have a loglevel of <= warn or it will fail
+  actualClusterCount=$(LOG_LEVEL=warn k3d_test_cmd cluster list --no-headers "$@" | wc -l) # this must always have a loglevel of <= warn or it will fail
   if [[ $actualClusterCount -ne $expectedClusterCount ]]; then
     failed "incorrect number of clusters available: $actualClusterCount != $expectedClusterCount"
     return 1
@@ -108,14 +118,14 @@ check_cluster_count() {
 check_multi_node() {
   cluster=$1
   expectedNodeCount=$2
-  $EXE kubeconfig merge "$cluster" --kubeconfig-switch-context
+  k3d_test_cmd kubeconfig merge "$cluster" --kubeconfig-switch-context
   nodeCount=$(kubectl get nodes -o=custom-columns=NAME:.metadata.name --no-headers | wc -l)
   if [[ $nodeCount -eq $expectedNodeCount ]]; then
     passed "cluster $cluster has $expectedNodeCount nodes, as expected"
   else
     warn "cluster $cluster has incorrect number of nodes: $nodeCount != $expectedNodeCount"
     kubectl get nodes
-    docker ps -a
+    $RUNTIME_CMD ps -a
     return 1
   fi
   return 0
@@ -126,12 +136,12 @@ check_registry() {
 }
 
 check_volume_exists() {
-  docker volume inspect "$1" >/dev/null 2>&1
+  $RUNTIME_CMD volume inspect "$1" >/dev/null 2>&1
 }
 
 check_cluster_token_exist() {
   [ -n "$EXE" ] || abort "EXE is not defined"
-  $EXE cluster get "$1" --token | grep -q "TOKEN" >/dev/null 2>&1
+  k3d_test_cmd cluster get "$1" --token | grep -q "TOKEN" >/dev/null 2>&1
 }
 
 wait_for_pod_running_by_label() {
@@ -182,13 +192,13 @@ wait_for_pod_exec() {
 exec_in_node() {
   # $1 = container/node name
   # $2 = command
-  docker exec "$1" sh -c "$2"
+  $RUNTIME_CMD exec "$1" sh -c "$2"
 }
 
-docker_assert_container_label() {
+docker_assert_container_label() { # Renaming this would be a larger change, so we keep the name but use RUNTIME_CMD
   # $1 = container/node name
   # $2 = label to assert
-  docker inspect --format '{{ range $k, $v := .Config.Labels }}{{ printf "%s=%s\n" $k $v }}{{ end }}' "$1" | grep -qE "^$2$"
+  $RUNTIME_CMD inspect --format '{{ range $k, $v := .Config.Labels }}{{ printf "%s=%s\n" $k $v }}{{ end }}' "$1" | grep -qE "^$2$"
 }
 
 k3s_assert_node_label() {

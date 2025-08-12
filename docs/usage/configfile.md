@@ -64,6 +64,7 @@ image: rancher/k3s:v1.31.5-k3s1 # same as `--image rancher/k3s:v1.31.5-k3s1`
 network: my-custom-net # same as `--network my-custom-net`
 subnet: "172.28.0.0/16" # same as `--subnet 172.28.0.0/16`
 token: superSecretToken # same as `--token superSecretToken`
+runtime: docker # Choose your runtime: 'docker' (default) or 'podman'.
 volumes: # repeatable flags are represented as YAML lists
   - volume: /my/host/path:/path/in/node # same as `--volume '/my/host/path:/path/in/node@server:0;agent:*'`
     nodeFilters:

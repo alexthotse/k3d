@@ -184,9 +184,28 @@ check: check-fmt lint
 test:
 	$(GO) test $(TESTS) $(TESTFLAGS)
 
+# e2e runs tests inside a Docker-in-Docker environment
 e2e:
-	@echo "Running e2e tests"
+	@echo "Running e2e tests via Docker-in-Docker (tests/dind.sh)"
 	LOG_LEVEL="$(E2E_LOG_LEVEL)" E2E_INCLUDE="$(E2E_INCLUDE)" E2E_EXCLUDE="$(E2E_EXCLUDE)" E2E_EXTRA="$(E2E_EXTRA)" E2E_RUNNER_START_TIMEOUT=$(E2E_RUNNER_START_TIMEOUT) E2E_HELPER_IMAGE_TAG="$(E2E_HELPER_IMAGE_TAG)" E2E_KEEP="$(E2E_KEEP)" E2E_PARALLEL="$(E2E_PARALLEL)" E2E_DIND_VERSION="$(E2E_DIND_VERSION)" E2E_K3S_VERSION="$(E2E_K3S_VERSION)" E2E_FAIL_FAST="$(E2E_FAIL_FAST)" tests/dind.sh "${K3D_IMAGE_TAG}"
+
+# e2e-direct runs tests directly on the host/runner, respecting K3D_RUNTIME_UNDER_TEST
+e2e-direct:
+	@echo "Running e2e tests directly on runner (tests/runner.sh)..."
+	LOG_LEVEL="$(E2E_LOG_LEVEL)" \
+	E2E_INCLUDE="$(E2E_INCLUDE)" \
+	E2E_EXCLUDE="$(E2E_EXCLUDE)" \
+	E2E_EXTRA="$(E2E_EXTRA)" \
+	E2E_RUNNER_START_TIMEOUT=$(E2E_RUNNER_START_TIMEOUT) \
+	E2E_HELPER_IMAGE_TAG="$(E2E_HELPER_IMAGE_TAG)" \
+	E2E_KEEP="$(E2E_KEEP)" \
+	E2E_PARALLEL="$(E2E_PARALLEL)" \
+	E2E_K3S_VERSION="$(E2E_K3S_VERSION)" \
+	E2E_FAIL_FAST="$(E2E_FAIL_FAST)" \
+	K3D_RUNTIME_UNDER_TEST="$(K3D_RUNTIME_UNDER_TEST)" \
+	PATH="$(BINDIR):$(PATH)" \
+	EXE="$(BINDIR)/k3d" \
+	tests/runner.sh
 
 ci-tests: fmt check e2e
 

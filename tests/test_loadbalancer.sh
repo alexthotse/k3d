@@ -24,11 +24,11 @@ highlight "[START] LoadbalancerTest $EXTRA_TITLE"
 function check_container_port() {
   # $1 = container name
   # $2 = wanted port
-  exists=$(docker inspect "$1" --format '{{ range $k, $_ := .NetworkSettings.Ports }}{{ if eq $k "'"$2"'" }}true{{ end }}{{ end }}')
+  exists=$($RUNTIME_CMD inspect "$1" --format '{{ range $k, $_ := .NetworkSettings.Ports }}{{ if eq $k "'"$2"'" }}true{{ end }}{{ end }}')
   if [[ $exists == "true" ]]; then
     return 0
   else
-    docker inspect "$1" --format '{{ range $k, $_ := .NetworkSettings.Ports }}{{ printf "%s\n" $k }}{{ end }}'
+    $RUNTIME_CMD inspect "$1" --format '{{ range $k, $_ := .NetworkSettings.Ports }}{{ printf "%s\n" $k }}{{ end }}'
     return 1
   fi
 }
@@ -36,7 +36,7 @@ function check_container_port() {
 clustername="lbtest"
 
 info "Creating cluster $clustername..."
-$EXE cluster create $clustername --timeout 360s --agents 1 \
+k3d_test_cmd cluster create $clustername --timeout 360s --agents 1 \
   -p 2222:3333@server:0 \
   -p 8080:80@server:0:proxy \
   -p 1234:4321/tcp@agent:0:direct \
@@ -73,7 +73,7 @@ check_container_port k3d-$clustername-agent-0 "7777/tcp" && failed "7777/tcp on 
 check_container_port k3d-$clustername-serverlb "7777/tcp" || failed "7777/tcp not on serverlb"
 
 info "Checking Loadbalancer Config..."
-LOG_LEVEL=error $EXE debug loadbalancer get-config $clustername > lbconfig.yaml
+LOG_LEVEL=error k3d_test_cmd debug loadbalancer get-config $clustername > lbconfig.yaml
 yq eval '.ports."80.tcp"' lbconfig.yaml | grep -q "k3d-$clustername-server-0" || failed "port 80.tcp not configured for server-0"
 yq eval '.ports."5555.tcp"' lbconfig.yaml | grep -q "k3d-$clustername-server-0" || failed "port 5555.tcp not configured for server-0"
 yq eval '.ports."5555.tcp"' lbconfig.yaml | grep -q "k3d-$clustername-agent-0" || failed "port 5555.tcp not configured for agent-0"
@@ -82,7 +82,7 @@ yq eval '.ports."7777.tcp"' lbconfig.yaml | grep -q "k3d-$clustername-agent-0" |
 
 
 info "Deleting clusters..."
-$EXE cluster delete $clustername || failed "could not delete the cluster $clustername"
+k3d_test_cmd cluster delete $clustername || failed "could not delete the cluster $clustername"
 
 exit 0
 

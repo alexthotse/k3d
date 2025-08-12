@@ -37,7 +37,7 @@ cat "$configfile"
 highlight "[START] ConfigTest $EXTRA_TITLE"
 
 info "Creating cluster $clustername..."
-$EXE cluster create "$clustername" --config "$configfile" $EXTRA_FLAG || failed "could not create cluster $clustername $EXTRA_TITLE"
+k3d_test_cmd cluster create "$clustername" --config "$configfile" $EXTRA_FLAG || failed "could not create cluster $clustername $EXTRA_TITLE"
 
 info "Sleeping for 5 seconds to give the cluster enough time to get ready..."
 sleep 5
@@ -66,7 +66,7 @@ k3s_assert_node_label "k3d-$clustername-server-0" "foo=bar" || failed "Expected 
 ## Registry Node
 registryname="registry.localhost"
 info "Ensuring, that we have a registry node present"
-$EXE node list "$registryname" || failed "Expected registry node $registryname to be present"
+k3d_test_cmd node list "$registryname" || failed "Expected registry node $registryname to be present"
 
 ## merged registries.yaml
 info "Ensuring, that the registries.yaml file contains both registries"
@@ -76,7 +76,7 @@ exec_in_node "k3d-$clustername-server-0" "cat /etc/rancher/k3s/registries.yaml" 
 # Cleanup
 
 info "Deleting cluster $clustername (using config file)..."
-$EXE cluster delete --config "$configfile" --trace || failed "could not delete the cluster $clustername"
+k3d_test_cmd cluster delete --config "$configfile" --trace || failed "could not delete the cluster $clustername"
 
 rm "$configfile"
 

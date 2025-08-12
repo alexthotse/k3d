@@ -23,8 +23,8 @@ clustername_1="test-basic-1"
 clustername_2="test-basic-2"
 
 info "Creating two clusters..."
-$EXE cluster create $clustername_1 --wait --timeout 60s --env 'TEST_VAR=user\@pass\\@server:0' || failed "could not create cluster $clustername_1"
-$EXE cluster create $clustername_2 --wait --timeout 60s || failed "could not create cluster $clustername_2"
+k3d_test_cmd cluster create $clustername_1 --wait --timeout 60s --env 'TEST_VAR=user\@pass\\@server:0' || failed "could not create cluster $clustername_1"
+k3d_test_cmd cluster create $clustername_2 --wait --timeout 60s || failed "could not create cluster $clustername_2"
 
 info "Checking that we can get both clusters..."
 check_cluster_count 2 "$clustername_1" "$clustername_2"
@@ -33,15 +33,15 @@ info "Checking we have access to both clusters..."
 check_clusters "$clustername_1" "$clustername_2" || failed "error checking cluster"
 
 info "Checking cluster env var with escaped @ signs..."
-docker exec k3d-$clustername_1-server-0 env | grep -qE '^TEST_VAR=user@pass\\$' || failed "Failed to lookup proper env var in container"
+$RUNTIME_CMD exec k3d-$clustername_1-server-0 env | grep -qE '^TEST_VAR=user@pass\\$' || failed "Failed to lookup proper env var in container"
 
 info "Check k3s token retrieval"
 check_cluster_token_exist "$clustername_1" || failed "could not find cluster token $clustername_1"
 check_cluster_token_exist "$clustername_2" || failed "could not find cluster token $clustername_2"
 
 info "Deleting clusters..."
-$EXE cluster delete $clustername_1 || failed "could not delete the cluster $clustername_1"
-$EXE cluster delete $clustername_2 || failed "could not delete the cluster $clustername_2"
+k3d_test_cmd cluster delete $clustername_1 || failed "could not delete the cluster $clustername_1"
+k3d_test_cmd cluster delete $clustername_2 || failed "could not delete the cluster $clustername_2"
 
 exit 0
 

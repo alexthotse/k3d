@@ -103,3 +103,28 @@ jobs:
           make e2e \
             -e E2E_K3S_VERSION=+${{matrix.k3s_channel}} \
             -e E2E_INCLUDE=test_full_lifecycle
+
+  test-podman-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+      - name: Start and Check Podman Socket
+        run: |
+          sudo systemctl start podman.socket
+          sudo systemctl status podman.socket --no-pager
+          podman version # Verify installation
+      - name: Create k3d network for Podman
+        run: |
+          sudo podman network create k3d || echo "Podman network 'k3d' may already exist."
+          sudo podman network inspect k3d
+      - name: Run e2e tests with Podman
+        env:
+          K3D_RUNTIME_UNDER_TEST: podman
+        run: |
+          echo "Running e2e tests with Podman..."
+           make build # Ensure k3d binary is built first
+           make e2e-direct # This will run tests directly on the runner

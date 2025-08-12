@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/k3d-io/k3d/v5/pkg/runtimes/docker"
+	"github.com/k3d-io/k3d/v5/pkg/runtimes/podman"
 	runtimeTypes "github.com/k3d-io/k3d/v5/pkg/runtimes/types"
 	k3d "github.com/k3d-io/k3d/v5/pkg/types"
 )
@@ -41,9 +42,13 @@ var SelectedRuntime Runtime = docker.Docker{}
 // Docker docker
 var Docker = docker.Docker{}
 
+// Podman podman
+var Podman = podman.Podman{}
+
 // Runtimes defines a map of implemented k3d runtimes
 var Runtimes = map[string]Runtime{
-	"docker": docker.Docker{},
+	"docker": Docker,
+	"podman": Podman,
 }
 
 // Runtime defines an interface that can be implemented for various container runtime environments (docker, containerd, etc.)

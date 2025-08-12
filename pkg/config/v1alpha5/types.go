@@ -165,8 +165,9 @@ type SimpleConfig struct {
 	ClusterToken      string                  `mapstructure:"token" json:"clusterToken,omitempty"` // default: auto-generated
 	Volumes           []VolumeWithNodeFilters `mapstructure:"volumes" json:"volumes,omitempty"`
 	Ports             []PortWithNodeFilters   `mapstructure:"ports" json:"ports,omitempty"`
-	Options           SimpleConfigOptions     `mapstructure:"options" json:"options,omitempty"`
 	Env               []EnvVarWithNodeFilters `mapstructure:"env" json:"env,omitempty"`
+	Runtime           string                  `mapstructure:"runtime" json:"runtime,omitempty"`
+	Options           SimpleConfigOptions     `mapstructure:"options" json:"options,omitempty"`
 	Registries        SimpleConfigRegistries  `mapstructure:"registries" json:"registries,omitempty"`
 	HostAliases       []k3d.HostAlias         `mapstructure:"hostAliases" json:"hostAliases,omitempty"`
 	Files             []FileWithNodeFilters   `mapstructure:"files" json:"files,omitempty"`

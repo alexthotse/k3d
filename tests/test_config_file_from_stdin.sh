@@ -34,7 +34,7 @@ highlight "[START] ConfigTest $EXTRA_TITLE"
 
 info "Creating cluster $clustername..."
 
-cat <<EOF | $EXE cluster create --config=-
+cat <<EOF | k3d_test_cmd cluster create --config=-
 apiVersion: k3d.io/v1alpha5
 kind: Simple
 metadata:
@@ -115,7 +115,7 @@ k3s_assert_node_label "k3d-$clustername-server-0" "foo=bar" || failed "Expected 
 ## Registry Node
 registryname="stdintest.registry.localhost"
 info "Ensuring, that we have a registry node present"
-$EXE node list "$registryname" || failed "Expected registry node $registryname to be present"
+k3d_test_cmd node list "$registryname" || failed "Expected registry node $registryname to be present"
 
 ## merged registries.yaml
 info "Ensuring, that the registries.yaml file contains both registries"
@@ -125,7 +125,7 @@ exec_in_node "k3d-$clustername-server-0" "cat /etc/rancher/k3s/registries.yaml" 
 # Cleanup
 
 info "Deleting cluster $clustername (using config file from stdin)..."
-cat <<EOF | $EXE cluster delete --config=-
+cat <<EOF | k3d_test_cmd cluster delete --config=-
 apiVersion: k3d.io/v1alpha5
 kind: Simple
 metadata:

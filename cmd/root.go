@@ -45,11 +45,15 @@ import (
 	"github.com/k3d-io/k3d/v5/cmd/kubeconfig"
 	"github.com/k3d-io/k3d/v5/cmd/node"
 	"github.com/k3d-io/k3d/v5/cmd/registry"
+	"path/filepath"
+
 	cliutil "github.com/k3d-io/k3d/v5/cmd/util"
+	pkgconfig "github.com/k3d-io/k3d/v5/pkg/config"
 	l "github.com/k3d-io/k3d/v5/pkg/logger"
 	"github.com/k3d-io/k3d/v5/pkg/runtimes"
 	"github.com/k3d-io/k3d/v5/pkg/util"
 	"github.com/k3d-io/k3d/v5/version"
+	"github.com/spf13/viper"
 )
 
 // RootFlags describes a struct that holds flags that can be set on root level of the command
@@ -90,6 +94,7 @@ All Nodes of a k3d cluster are part of the same docker network.`,
 	rootCmd.PersistentFlags().BoolVar(&flags.debugLogging, "verbose", false, "Enable verbose output (debug logging)")
 	rootCmd.PersistentFlags().BoolVar(&flags.traceLogging, "trace", false, "Enable super verbose output (trace logging)")
 	rootCmd.PersistentFlags().BoolVar(&flags.timestampedLogging, "timestamps", false, "Enable Log timestamps")
+	rootCmd.PersistentFlags().String("runtime", runtimes.Docker.ID(), "Runtime to use (e.g., 'docker', 'podman')")
 
 	// add local flags
 	rootCmd.Flags().BoolVar(&flags.version, "version", false, "Show k3d and default k3s version")
@@ -201,13 +206,104 @@ func initLogging() {
 }
 
 func initRuntime() {
-	runtime, err := runtimes.GetRuntime("docker")
-	if err != nil {
-		l.Log().Fatalln(err)
+	// Determine runtime: flag > config > default
+	selectedRuntimeName := runtimes.Docker.ID() // Default
+
+	// 1. Try to load runtime from a k3d config file if it exists
+	fileViper := viper.New()
+	fileViper.SetConfigName("k3d") // Name of config file (without extension)
+	fileViper.SetConfigType("yaml")
+	fileViper.AddConfigPath(".") // Look in current directory
+	// Attempt to get user's config directory
+	userConfigDir, err := os.UserConfigDir()
+	if err == nil {
+		fileViper.AddConfigPath(filepath.Join(userConfigDir, "k3d")) // e.g., $HOME/.config/k3d
+	} else {
+		l.Log().Debugf("Failed to get user config dir: %v", err)
 	}
-	runtimes.SelectedRuntime = runtime
-	if rtinfo, err := runtime.Info(); err == nil {
+	fileViper.AddConfigPath("/etc/k3d") // System-wide
+
+	if err := fileViper.ReadInConfig(); err == nil {
+		// Config file found and read successfully
+		l.Log().Debugf("Using config file: %s", fileViper.ConfigFileUsed())
+		if fileViper.IsSet("runtime") {
+			runtimeFromConfig := fileViper.GetString("runtime")
+			if runtimeFromConfig != "" {
+				selectedRuntimeName = runtimeFromConfig
+				l.Log().Debugf("Runtime '%s' loaded from config file %s", selectedRuntimeName, fileViper.ConfigFileUsed())
+			}
+		} else {
+			// Attempt to parse as SimpleConfig to get runtime from the nested field if not top-level "runtime"
+			// This is a fallback if "runtime" is not a top-level key but part of the SimpleConfig structure.
+			// For the current task, SimpleConfig has "runtime" at its root level due to the previous change.
+			// So, fileViper.GetString("runtime") should be sufficient.
+			// Keeping this more elaborate parsing for robustness or future changes.
+			simpleCfg, err := pkgconfig.SimpleConfigFromViper(fileViper)
+			if err != nil {
+				l.Log().Debugf("Failed to parse loaded config file as SimpleConfig: %v", err)
+			} else {
+				if simpleCfg.Runtime != "" {
+					selectedRuntimeName = simpleCfg.Runtime
+					l.Log().Debugf("Runtime '%s' loaded from SimpleConfig structure in %s", selectedRuntimeName, fileViper.ConfigFileUsed())
+				}
+			}
+		}
+	} else {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			l.Log().Debugf("No config file found or specified for runtime setting, using default/flag: %v", err)
+		} else {
+			l.Log().Warnf("Error reading config file for runtime setting: %v", err)
+		}
+	}
+
+	// 2. Check command-line flag (takes precedence)
+	// Parsing os.Args manually is fragile. A better way is to use cmd.Flags().GetString("runtime")
+	// but `cmd` is not available in `OnInitialize`. Cobra doesn't easily expose the final flag values
+	// inside `OnInitialize` before `Execute` runs subcommands' PreRunE/RunE.
+	// However, PersistentFlags are available to `rootCmd`'s children.
+	// The flag was added to rootCmd.PersistentFlags().
+	// A common pattern is to check flags in PersistentPreRunE of rootCmd.
+	// Since we are in `initRuntime` called by `cobra.OnInitialize`, we'll stick to os.Args parsing for now,
+	// acknowledging its limitations.
+	var runtimeFlagValue string
+	runtimeFlagIsSet := false
+	for i, arg := range os.Args {
+		if arg == "--runtime" {
+			if i+1 < len(os.Args) {
+				runtimeFlagValue = os.Args[i+1]
+				runtimeFlagIsSet = true
+			}
+			break
+		}
+		if strings.HasPrefix(arg, "--runtime=") {
+			runtimeFlagValue = strings.SplitN(arg, "=", 2)[1]
+			runtimeFlagIsSet = true
+			break
+		}
+	}
+
+	if runtimeFlagIsSet {
+		if runtimeFlagValue != selectedRuntimeName { // Flag is set and different from config/default
+			l.Log().Debugf("Runtime '%s' set via command-line flag, overriding current value '%s'", runtimeFlagValue, selectedRuntimeName)
+			selectedRuntimeName = runtimeFlagValue
+		} else { // Flag is set but same as current value (e.g. config had 'podman', flag is '--runtime=podman')
+			l.Log().Debugf("Runtime '%s' set via command-line flag (matches config/default or flag is default)", runtimeFlagValue)
+		}
+	}
+
+
+	// 3. Get and set the runtime
+	runtimeInstance, err := runtimes.GetRuntime(selectedRuntimeName)
+	if err != nil {
+		l.Log().Fatalf("Failed to initialize runtime '%s': %v", selectedRuntimeName, err)
+	}
+	runtimes.SelectedRuntime = runtimeInstance
+	l.Log().Infof("Using runtime '%s'", selectedRuntimeName)
+
+	if rtinfo, err := runtimeInstance.Info(); err == nil {
 		l.Log().Debugf("Runtime Info:\n%+v", rtinfo)
+	} else {
+		l.Log().Warnf("Failed to get runtime info for '%s': %v", selectedRuntimeName, err)
 	}
 }
 
